@@ -46,15 +46,16 @@ describe('GET /api/games', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .end((err, result) => {
+      .end((err, answer) => {
         if (err) return done(err);
-        assert.strictEqual(result.body[0].publisherId, '1234567890');
-        assert.strictEqual(result.body[0].name, 'Test App');
-        assert.strictEqual(result.body[0].platform, 'ios');
-        assert.strictEqual(result.body[0].storeId, '1234');
-        assert.strictEqual(result.body[0].bundleId, 'test.bundle.id');
-        assert.strictEqual(result.body[0].appVersion, '1.0.0');
-        assert.strictEqual(result.body[0].isPublished, true);
+        const result = answer.body.find((elem) => elem.name === 'Test App');
+        assert.strictEqual(result.publisherId, '1234567890');
+        assert.strictEqual(result.name, 'Test App');
+        assert.strictEqual(result.platform, 'ios');
+        assert.strictEqual(result.storeId, '1234');
+        assert.strictEqual(result.bundleId, 'test.bundle.id');
+        assert.strictEqual(result.appVersion, '1.0.0');
+        assert.strictEqual(result.isPublished, true);
         return done();
       });
   });
@@ -63,7 +64,7 @@ describe('GET /api/games', () => {
 /**
  * Testing update game endpoint
  */
-describe('PUT /api/games/1', () => {
+describe('PUT /api/games/6', () => {
   const data = {
     id: 1,
     publisherId: '999000999',
@@ -76,7 +77,7 @@ describe('PUT /api/games/1', () => {
   };
   it('respond with 200 and an updated object', (done) => {
     request(app)
-      .put('/api/games/1')
+      .put('/api/games/6')
       .send(data)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -96,12 +97,12 @@ describe('PUT /api/games/1', () => {
 });
 
 /**
- * Testing update game endpoint
+ * Testing delete game endpoint
  */
-describe('DELETE /api/games/1', () => {
+describe('DELETE /api/games/6', () => {
   it('respond with 200', (done) => {
     request(app)
-      .delete('/api/games/1')
+      .delete('/api/games/6')
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -122,9 +123,137 @@ describe('GET /api/games', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .end((err, result) => {
+      .end((err, res) => {
         if (err) return done(err);
-        assert.strictEqual(result.body.length, 0);
+
+        const expected = [
+          { name: 'Helix Jump', platform: 'ios' },
+          { name: 'Helix Jump', platform: 'android' },
+          { name: 'Swing Rider', platform: 'ios' },
+          { name: 'Swing Rider', platform: 'android' },
+          { name: 'Car Crash!', platform: 'ios' },
+        ];
+
+        const simplified = res.body.map((g) => ({ name: g.name, platform: g.platform }));
+        assert.deepStrictEqual(simplified, expected);
+        return done();
+      });
+  });
+});
+
+/**
+ * Testing get all games endpoint through search endpoint with no filters
+ */
+describe('POST /api/games/search', () => {
+  it('returns all games when no filter is given', (done) => {
+    request(app)
+      .post('/api/games/search')
+      .send({})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        const expected = [
+          { name: 'Helix Jump', platform: 'ios' },
+          { name: 'Helix Jump', platform: 'android' },
+          { name: 'Swing Rider', platform: 'ios' },
+          { name: 'Swing Rider', platform: 'android' },
+          { name: 'Car Crash!', platform: 'ios' },
+        ];
+
+        const simplified = res.body.map((g) => ({ name: g.name, platform: g.platform }));
+        assert.deepStrictEqual(simplified, expected);
+        return done();
+      });
+  });
+
+  /**
+  * Testing get games with a partial match name filter
+  */
+  it('filters games by name (partial match)', (done) => {
+    request(app)
+      .post('/api/games/search')
+      .send({ name: 'Helix' })
+      .set('Accept', 'application/json')
+      .expect(200)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        const expected = [
+          { name: 'Helix Jump', platform: 'ios' },
+          { name: 'Helix Jump', platform: 'android' },
+        ];
+
+        const simplified = res.body.map((g) => ({ name: g.name, platform: g.platform }));
+        assert.deepStrictEqual(simplified, expected);
+        return done();
+      });
+  });
+
+  /**
+  * Testing get games with an exact match name filter
+  */
+  it('filters games by name (exact match)', (done) => {
+    request(app)
+      .post('/api/games/search')
+      .send({ name: 'Helix Jump' })
+      .set('Accept', 'application/json')
+      .expect(200)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        const expected = [
+          { name: 'Helix Jump', platform: 'ios' },
+          { name: 'Helix Jump', platform: 'android' },
+        ];
+
+        const simplified = res.body.map((g) => ({ name: g.name, platform: g.platform }));
+        assert.deepStrictEqual(simplified, expected);
+        return done();
+      });
+  });
+
+  /**
+  * Testing get games with an exact match platform filter
+  */
+  it('filters games by platform (exact match)', (done) => {
+    request(app)
+      .post('/api/games/search')
+      .send({ platform: 'ios' })
+      .set('Accept', 'application/json')
+      .expect(200)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        const expected = [
+          { name: 'Helix Jump', platform: 'ios' },
+          { name: 'Swing Rider', platform: 'ios' },
+          { name: 'Car Crash!', platform: 'ios' },
+        ];
+
+        const simplified = res.body.map((g) => ({ name: g.name, platform: g.platform }));
+        assert.deepStrictEqual(simplified, expected);
+        return done();
+      });
+  });
+
+  it('filters games by both name and platform', (done) => {
+    request(app)
+      .post('/api/games/search')
+      .send({ name: 'Swing', platform: 'android' })
+      .set('Accept', 'application/json')
+      .expect(200)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        const expected = [
+          { name: 'Swing Rider', platform: 'android' },
+        ];
+
+        const simplified = res.body.map((g) => ({ name: g.name, platform: g.platform }));
+        assert.deepStrictEqual(simplified, expected);
         return done();
       });
   });
