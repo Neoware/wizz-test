@@ -257,4 +257,22 @@ describe('POST /api/games/search', () => {
         return done();
       });
   });
+
+  /**
+ * Testing database population with top 100 games
+ */
+  describe('POST /api/games/populate', () => {
+    it('should populate the database with games from the external JSON sources', (done) => {
+      request(app)
+        .post('/api/games/populate')
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          assert.ok(res.body.inserted === 200);
+          return done();
+        });
+    });
+  });
 });

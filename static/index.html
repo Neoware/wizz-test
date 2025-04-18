@@ -35,6 +35,11 @@
   </section>
   <section class="section section-container" style="padding-bottom: 10px;">
     <div class="box">
+      <populate-database title="Populate database" @populate-database="populateDatabase" />
+    </div>
+  </section>
+  <section class="section section-container" style="padding-bottom: 10px;">
+    <div class="box">
       <add-update-game title="Add Game" @save-game="onAddOrUpdateGame" />
     </div>
   </section>
@@ -167,6 +172,27 @@
     `
   }
 
+  const PopulateDatabase = {
+  props: ['loading'],
+  template: `
+    <button class="button is-success" :disabled="loading">
+      <span v-if="!loading">Populate</span>
+      <span v-else><i class="fa fa-spinner fa-spin"></i> Populating...</span>
+    </button>
+  `,
+  methods: {
+    populateDatabase() {
+      this.$emit('populate-database', {});
+    }
+  },
+  mounted () {
+    this.$el.addEventListener('click', this.populateDatabase);
+  },
+  beforeDestroy () {
+    this.$el.removeEventListener('click', this.populateDatabase);
+  }
+};
+
   const Search = {
     data () {
       return {
@@ -209,11 +235,12 @@
 
   new Vue({
     el: '#app',
-    components: { game: Game, 'add-update-game': AddUpdateGame, 'search-games': Search },
+    components: { game: Game, 'add-update-game': AddUpdateGame, 'search-games': Search, 'populate-database': PopulateDatabase, },
     data: {
       games: [],
       search: [],
-      apiURL: 'http://localhost:3000/api/games'
+      apiURL: 'http://localhost:3000/api/games',
+      isPopulating: false
     },
     methods: {
       onAddOrUpdateGame (game) {
@@ -255,7 +282,23 @@
           .then((response) => {
             this.games = response.data
           })
-      }
+      },
+      populateDatabase () {
+      this.isPopulating = true;
+      console.log('populating database');
+      axios.post(`${this.apiURL}/populate`)
+        .then(() => {
+        return axios.get(this.apiURL);
+      })
+      .then((response) => {
+      this.games = response.data;
+      this.isPopulating = false;
+    })
+    .catch((err) => {
+      console.error('Error populating database:', err);
+      this.isPopulating = false;
+    });
+}
     },
     beforeMount () {
       axios.get(this.apiURL)

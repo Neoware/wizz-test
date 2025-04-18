@@ -67,6 +67,43 @@ app.post('/api/games/search', (req, res) => {
     });
 });
 
+const urls = [
+  'https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/ios.top100.json',
+  'https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/android.top100.json',
+];
+
+const fetchAndPrepareApps = async (url, limit) => {
+  const response = await fetch(url);
+  const raw = await response.json();
+  const apps = raw.flat().slice(0, limit);
+
+  return apps.map((appToInsert) => ({
+    publisherId: appToInsert.publisher_id,
+    name: appToInsert.name,
+    platform: appToInsert.os,
+    storeId: appToInsert.app_id,
+    bundleId: appToInsert.bundle_id,
+    appVersion: appToInsert.version,
+    isPublished: true,
+    createdAt: appToInsert.release_date,
+    updatedAt: appToInsert.updated_date,
+  }));
+};
+
+app.post('/api/games/populate', async (req, res) => {
+  try {
+    const allApps = await Promise.all(urls.map((url) => fetchAndPrepareApps(url, 100)));
+    const appsToInsert = allApps.flat();
+
+    await db.Game.bulkCreate(appsToInsert, { ignoreDuplicates: true });
+
+    res.status(200).json({ inserted: appsToInsert.length });
+  } catch (err) {
+    console.error('Populate error:', err);
+    res.status(500).json({ error: 'Failed to populate games' });
+  }
+});
+
 app.listen(3000, () => {
   console.log('Server is up on port 3000');
 });
